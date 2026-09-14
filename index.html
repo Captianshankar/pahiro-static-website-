@@ -130,8 +130,8 @@
     gap:6px;
   }
 
-  #map{height:460px; width:100%; border:1px solid var(--line);}
-  @media (max-width:700px){ #map{height:320px;} }
+  #map-container{height:460px; width:100%; border:1px solid var(--line);}
+  @media (max-width:700px){ #map-container{height:320px;} }
 
   .legend-row{display:flex; flex-wrap:wrap; gap:14px; padding:8px 12px; font-size:11.5px; border-top:1px solid var(--line);}
   .legend-item{display:flex; align-items:center; gap:6px;}
@@ -324,7 +324,7 @@
   <p style="margin-top:0;">The map below marks the town's more densely populated wards alongside slopes with a documented history of instability. Labels with a leader line point to the highest-risk stretches.</p>
 
   <div class="panel">
-    <div id="map"></div>
+    <div id="map-container"></div>
     <div class="legend-row">
       <div class="legend-item"><span class="swatch" style="background:#1b2a4a;"></span> Populated ward (size = relative density)</div>
       <div class="legend-item"><span class="swatch" style="background:var(--very-high);"></span> Very high risk slope</div>
@@ -550,7 +550,7 @@
     if(mapInitialised) return;
     mapInitialised = true;
 
-    var map = L.map('map').setView([27.3320, 88.6120], 13);
+    var map = L.map('map-container').setView([27.3320, 88.6120], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '&copy; OpenStreetMap contributors'
