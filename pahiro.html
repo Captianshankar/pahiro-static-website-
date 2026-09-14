@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pahiro — Landslide Early Warning, Gangtok</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23efe9d8'/%3E%3Cpath d='M2 26 L13 8 L18 16 L22 10 L30 26 Z' fill='none' stroke='%231b2a4a' stroke-width='2'/%3E%3Cpath d='M13 8 L11 14 L15 15 L12 20' fill='none' stroke='%237a1f1f' stroke-width='1.5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --paper:#efe9d8;
+    --paper-dark:#e4dcc4;
+    --ink:#1b2a4a;
+    --ink-light:#33456e;
+    --maroon:#7a1f1f;
+    --amber:#a66a1e;
+    --green:#2f4f3e;
+    --line:#8a7f68;
+    --very-high:#7a1f1f;
+    --high:#b23a22;
+    --moderate:#a66a1e;
+    --low:#2f4f3e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:#221d12;
+    font-family:Verdana, Geneva, Tahoma, sans-serif;
+    font-size:13px;
+    line-height:1.5;
+  }
+  h1,h2,h3{
+    font-family:Georgia, "Times New Roman", serif;
+    color:var(--ink);
+    margin:0 0 6px 0;
+    font-weight:normal;
+  }
+  a{color:var(--maroon);}
+  :focus-visible{outline:3px solid var(--ink); outline-offset:1px;}
+
+  .legend-strip{height:6px; display:flex;}
+  .legend-strip span{flex:1;}
+
+  header.site-header{
+    background:var(--ink);
+    color:var(--paper);
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand h1{color:#fff; font-size:26px; letter-spacing:0.5px;}
+  .brand .tagline{font-size:12px; color:#c9d0dd; font-family:Verdana, sans-serif;}
+  .brand svg{flex-shrink:0;}
+
+  .location-pill{
+    border:1px solid #c9d0dd;
+    background:var(--ink-light);
+    color:#fff;
+    padding:6px 10px;
+    font-size:12px;
+    font-family:Verdana, sans-serif;
+  }
+  .location-pill button{
+    background:none; border:none; color:#fff; text-decoration:underline;
+    cursor:pointer; font-size:12px; padding:0 0 0 6px; font-family:Verdana, sans-serif;
+  }
+
+  nav.site-nav{
+    background:var(--paper-dark);
+    border-bottom:1px solid var(--line);
+    padding:8px 20px;
+    font-family:Verdana, sans-serif;
+    font-size:12.5px;
+  }
+  nav.site-nav a{
+    color:var(--ink);
+    text-decoration:none;
+    padding:2px 4px;
+  }
+  nav.site-nav a:hover{text-decoration:underline;}
+  nav.site-nav .sep{color:var(--line); padding:0 4px;}
+
+  main{max-width:1180px; margin:0 auto; padding:16px 20px 40px 20px;}
+
+  .banner{
+    border:1px solid var(--line);
+    border-left:8px solid var(--amber);
+    background:#fff9ea;
+    padding:10px 14px;
+    margin-bottom:16px;
+    font-size:13px;
+  }
+  .banner.risk-Low{border-left-color:var(--low);}
+  .banner.risk-Moderate{border-left-color:var(--moderate);}
+  .banner.risk-High{border-left-color:var(--high);}
+  .banner.risk-Very-High{border-left-color:var(--very-high);}
+  .banner strong{font-family:Georgia, serif;}
+
+  .layout{display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap;}
+  .col-main{flex:2 1 620px; min-width:320px;}
+  .col-side{flex:1 1 300px; min-width:280px;}
+
+  .panel{
+    border:1px solid var(--line);
+    background:#fbf8ef;
+    margin-bottom:16px;
+  }
+  .panel-head{
+    background:var(--ink);
+    color:#fff;
+    padding:6px 10px;
+    font-family:Georgia, serif;
+    font-size:14px;
+  }
+  .panel-body{padding:10px 12px;}
+  .panel-body p{margin:0 0 8px 0;}
+  .panel-foot{
+    border-top:1px solid var(--line);
+    padding:6px 12px;
+    font-size:11px;
+    color:#544c39;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  #map{height:460px; width:100%; border:1px solid var(--line);}
+  @media (max-width:700px){ #map{height:320px;} }
+
+  .legend-row{display:flex; flex-wrap:wrap; gap:14px; padding:8px 12px; font-size:11.5px; border-top:1px solid var(--line);}
+  .legend-item{display:flex; align-items:center; gap:6px;}
+  .swatch{width:12px; height:12px; border:1px solid #5a5236; display:inline-block;}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table caption{text-align:left; font-size:11px; color:#544c39; padding-bottom:4px;}
+  th,td{border:1px solid var(--line); padding:5px 7px; text-align:left;}
+  th{background:var(--paper-dark); font-family:Georgia, serif; font-weight:normal;}
+  tr:nth-child(even) td{background:#f4f0e2;}
+
+  .stat-row{display:flex; justify-content:space-between; border-bottom:1px dotted var(--line); padding:4px 0;}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-label{color:#544c39;}
+  .stat-value{font-family:Georgia, serif;}
+
+  .badge{
+    display:inline-block;
+    padding:2px 8px;
+    border:1px solid #5a5236;
+    font-family:Georgia, serif;
+    color:#fff;
+  }
+  .badge.Low{background:var(--low);}
+  .badge.Moderate{background:var(--moderate);}
+  .badge.High{background:var(--high);}
+  .badge.Very-High{background:var(--very-high);}
+
+  .pulse{
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:var(--green); margin-right:5px; position:relative; top:-1px;
+    animation:pulse 2.4s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(47,79,62,0.5); }
+    70%{ box-shadow:0 0 0 6px rgba(47,79,62,0); }
+    100%{ box-shadow:0 0 0 0 rgba(47,79,62,0); }
+  }
+
+  button.btn, select, input[type=text], input[type=tel], textarea{
+    font-family:Verdana, sans-serif;
+    font-size:12.5px;
+    border:1px solid var(--line);
+    background:#fff;
+    padding:6px 8px;
+  }
+  button.btn{
+    background:var(--paper-dark);
+    cursor:pointer;
+    color:var(--ink);
+  }
+  button.btn:hover{background:#d9cfae;}
+  button.btn.primary{background:var(--ink); color:#fff; border-color:var(--ink);}
+  button.btn.primary:hover{background:var(--ink-light);}
+
+  label{display:block; font-size:12px; color:#33301f; margin:8px 0 3px 0;}
+  textarea{width:100%; resize:vertical;}
+  select, input[type=text], input[type=tel]{width:100%;}
+
+  ol.priority-list{padding-left:20px; margin:0;}
+  ol.priority-list li{margin-bottom:6px;}
+
+  .risk-tooltip{
+    background:#fbf8ef !important;
+    border:1px solid var(--line) !important;
+    color:#221d12 !important;
+    font-family:Verdana, sans-serif;
+    font-size:11px !important;
+    padding:2px 5px !important;
+    box-shadow:none !important;
+  }
+
+  footer{
+    border-top:2px solid var(--ink);
+    margin-top:24px;
+    padding:14px 20px 30px 20px;
+    font-size:11.5px;
+    color:#544c39;
+    max-width:1180px;
+    margin-left:auto; margin-right:auto;
+  }
+  footer .disclaimer{border:1px solid var(--line); background:#fbf8ef; padding:8px 10px; margin-bottom:10px;}
+
+  .lang-toggle{display:flex; gap:4px;}
+  .lang-toggle button{font-size:11px; padding:3px 7px;}
+  .lang-toggle button.active{background:var(--ink); color:#fff;}
+
+  /* location gate */
+  #gate{
+    position:fixed; inset:0; background:rgba(20,20,15,0.55);
+    display:flex; align-items:center; justify-content:center; z-index:999;
+    padding:16px;
+  }
+  #gate .box{
+    background:var(--paper); border:2px solid var(--ink); max-width:420px; width:100%;
+    padding:0;
+  }
+  #gate .box-head{background:var(--ink); color:#fff; padding:10px 14px; font-family:Georgia, serif; font-size:16px;}
+  #gate .box-body{padding:14px;}
+  #gate ul{list-style:none; margin:0; padding:0; border:1px solid var(--line);}
+  #gate li{border-bottom:1px solid var(--line); padding:8px 10px; display:flex; justify-content:space-between; align-items:center;}
+  #gate li:last-child{border-bottom:none;}
+  #gate li.enabled{cursor:pointer;}
+  #gate li.enabled:hover{background:#e4dcc4;}
+  #gate li.disabled{color:#8b8368;}
+  #gate .tag{font-size:10.5px; border:1px solid var(--line); padding:1px 5px;}
+  #gate .note{font-size:11.5px; margin-top:10px; color:#544c39;}
+  #gate .gate-actions{margin-top:12px; text-align:right;}
+  .hidden{display:none !important;}
+
+  #reportList{max-height:220px; overflow:auto; border-top:1px solid var(--line); margin-top:8px;}
+  #reportList .rep{padding:6px 0; border-bottom:1px dotted var(--line); font-size:12px;}
+  #reportList .rep:last-child{border-bottom:none;}
+  #reportList .rep .meta{color:#544c39; font-size:11px;}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <div class="box-head">Select your location</div>
+    <div class="box-body">
+      <p style="margin-top:0;">Pahiro shows live slope-risk conditions for one town at a time. Choose a location to continue.</p>
+      <ul id="gateList">
+        <li class="enabled" data-town="Gangtok" tabindex="0" role="button">Gangtok, Sikkim <span class="tag">available</span></li>
+        <li class="disabled">Shillong, Meghalaya <span class="tag">not yet available</span></li>
+        <li class="disabled">Itanagar, Arunachal Pradesh <span class="tag">not yet available</span></li>
+        <li class="disabled">Kohima, Nagaland <span class="tag">not yet available</span></li>
+        <li class="disabled">Imphal, Manipur <span class="tag">not yet available</span></li>
+        <li class="disabled">Aizawl, Mizoram <span class="tag">not yet available</span></li>
+        <li class="disabled">Agartala, Tripura <span class="tag">not yet available</span></li>
+        <li class="disabled">Guwahati, Assam <span class="tag">not yet available</span></li>
+      </ul>
+      <p class="note">Only Gangtok is covered in this demonstration. Other towns across the North Eastern Region are planned for later phases.</p>
+      <div class="gate-actions">
+        <button class="btn" id="useLocationBtn">Use my current location</button>
+        <button class="btn primary" id="continueGangtok">Open Gangtok</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<header class="site-header">
+  <div class="brand">
+    <svg width="40" height="40" viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" fill="#efe9d8" stroke="#efe9d8"/>
+      <path d="M2 26 L13 8 L18 16 L22 10 L30 26 Z" fill="none" stroke="#efe9d8" stroke-width="2"/>
+      <path d="M13 8 L11 14 L15 15 L12 20" fill="none" stroke="#c98a63" stroke-width="1.5"/>
+    </svg>
+    <div>
+      <h1>Pahiro</h1>
+      <div class="tagline" data-i18n="site_tagline">Early warning and monitoring for landslide-prone slopes</div>
+    </div>
+  </div>
+  <div class="location-pill">
+    Location: <strong id="currentTownLabel">Gangtok, Sikkim</strong>
+    <button id="changeLocationBtn">change</button>
+  </div>
+</header>
+
+<div class="legend-strip" aria-hidden="true">
+  <span style="background:var(--low);"></span>
+  <span style="background:var(--moderate);"></span>
+  <span style="background:var(--high);"></span>
+  <span style="background:var(--very-high);"></span>
+</div>
+
+<nav class="site-nav">
+  <a href="#map" data-i18n="nav_home">Home</a><span class="sep">|</span>
+  <a href="#dashboard" data-i18n="nav_map">Risk dashboard</a><span class="sep">|</span>
+  <a href="#report" data-i18n="nav_report">Field reports</a><span class="sep">|</span>
+  <a href="#alerts-panel" data-i18n="nav_alerts">Alerts</a><span class="sep">|</span>
+  <a href="#about" data-i18n="nav_about">About</a>
+  <span style="float:right;" class="lang-toggle">
+    <button data-lang="en" class="active">English</button>
+    <button data-lang="ne">नेपाली</button>
+    <button data-lang="hi">हिंदी</button>
+  </span>
+</nav>
+
+<main>
+
+  <div class="banner" id="statusBanner">
+    <span class="pulse" id="pulseDot"></span>
+    <strong data-i18n="alert_heading">Current status</strong>:
+    <span id="bannerText">Reading live rainfall and soil moisture data for Gangtok…</span>
+  </div>
+
+  <h2 id="map" data-i18n="map_heading">Gangtok — population and landslide risk zones</h2>
+  <p style="margin-top:0;">The map below marks the town's more densely populated wards alongside slopes with a documented history of instability. Labels with a leader line point to the highest-risk stretches.</p>
+
+  <div class="panel">
+    <div id="map"></div>
+    <div class="legend-row">
+      <div class="legend-item"><span class="swatch" style="background:#1b2a4a;"></span> Populated ward (size = relative density)</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--very-high);"></span> Very high risk slope</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--high);"></span> High risk slope</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--moderate);"></span> Moderate risk slope</div>
+      <div class="legend-item"><span class="swatch" style="background:#555;"></span> Monitored road corridor</div>
+    </div>
+    <div class="panel-foot">
+      <span>Base map: OpenStreetMap contributors. Zone boundaries are approximate and illustrative for this demonstration.</span>
+    </div>
+  </div>
+
+  <div class="layout" id="dashboard">
+    <div class="col-main">
+
+      <div class="panel">
+        <div class="panel-head" data-i18n="forecast_heading">Three-day rainfall outlook</div>
+        <div class="panel-body">
+          <table id="forecastTable">
+            <caption>Source: Open-Meteo weather forecast API, updated automatically.</caption>
+            <thead>
+              <tr><th>Date</th><th>Rain expected</th><th>Chance of rain</th><th>Indicative level</th></tr>
+            </thead>
+            <tbody id="forecastBody">
+              <tr><td colspan="4">Loading forecast…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head" data-i18n="roads_heading">Road connectivity</div>
+        <div class="panel-body">
+          <table>
+            <thead><tr><th>Route</th><th>Status</th><th>Note</th></tr></thead>
+            <tbody>
+              <tr><td>NH10, Ranipool – Gangtok</td><td><span class="badge Moderate">Reduced</span></td><td>Single-lane working near Ranipool after minor slippage; demo data.</td></tr>
+              <tr><td>Gangtok – Rumtek road</td><td><span class="badge Low">Open</span></td><td>Normal traffic; demo data.</td></tr>
+              <tr><td>Gangtok – Ranka road</td><td><span class="badge Low">Open</span></td><td>Normal traffic; demo data.</td></tr>
+              <tr><td>Tadong institutional access road</td><td><span class="badge Moderate">Watch</span></td><td>Cut-slope under observation; demo data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel-foot"><span>Illustrative status for this demonstration — not a live traffic feed.</span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head" data-i18n="priority_heading">Response priority order</div>
+        <div class="panel-body">
+          <p>Ranked by combining slope-risk level with population exposure. Demonstration logic only.</p>
+          <ol class="priority-list">
+            <li><strong>Burtuk (Ward 1)</strong> — very high slope risk with dense settlement on the upper slope; recommend slope inspection and evacuation readiness.</li>
+            <li><strong>Syari–Tathangchen (Ward 15)</strong> — long-running slow-moving slide below the old Palace grounds; recommend continued displacement monitoring.</li>
+            <li><strong>Upper Sichey (Ward 2)</strong> — fractured hillside with repeated creep; recommend drainage checks before peak monsoon.</li>
+            <li><strong>Ranipool (Ward 14)</strong> — loose fill slopes along the highway corridor; recommend traffic advisory during heavy rain.</li>
+            <li><strong>Chandmari slide belt</strong> — long-settled residential ward with a decades-long history of movement; recommend structural inspection of affected buildings.</li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-side">
+
+      <div class="panel">
+        <div class="panel-head" data-i18n="conditions_heading">Present conditions — Gangtok</div>
+        <div class="panel-body">
+          <div class="stat-row"><span class="stat-label">Rain, last hour</span><span class="stat-value" id="statRainNow">—</span></div>
+          <div class="stat-row"><span class="stat-label">Rain expected, next 24 h</span><span class="stat-value" id="statRain24">—</span></div>
+          <div class="stat-row"><span class="stat-label">Soil moisture, 0–1 cm</span><span class="stat-value" id="statSoil01">—</span></div>
+          <div class="stat-row"><span class="stat-label">Soil moisture, 1–3 cm</span><span class="stat-value" id="statSoil13">—</span></div>
+          <div class="stat-row"><span class="stat-label">Air temperature</span><span class="stat-value" id="statTemp">—</span></div>
+          <div class="stat-row"><span class="stat-label">Indicative risk score</span><span class="stat-value" id="statRiskBadge">—</span></div>
+        </div>
+        <div class="panel-foot">
+          <span id="lastUpdated">Last updated: —</span>
+          <button class="btn" id="refreshBtn" style="padding:2px 8px;">Refresh now</button>
+        </div>
+      </div>
+
+      <div class="panel" id="alerts-panel">
+        <div class="panel-head" data-i18n="nav_alerts">Alerts</div>
+        <div class="panel-body" id="alertsBody">
+          <p>No active alerts issued for Gangtok at this time. This panel updates as the risk score changes.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">Network status</div>
+        <div class="panel-body">
+          <div class="stat-row"><span class="stat-label">Connection</span><span class="stat-value" id="netStatus">checking…</span></div>
+          <p style="margin-top:8px; font-size:11.5px; color:#544c39;">Field reports submitted while offline are held locally and marked for sync once a connection returns.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <h2 id="report" data-i18n="report_heading">Report a slope or road hazard</h2>
+  <div class="panel">
+    <div class="panel-body">
+      <p>Field officials and residents can log cracks, slope movement or a blocked road. A photo or short video helps the district team assess the site faster.</p>
+      <form id="reportForm">
+        <label for="repLocality">Locality</label>
+        <select id="repLocality">
+          <option>Burtuk</option>
+          <option>Upper Sichey</option>
+          <option>Lower Sichey</option>
+          <option>Chandmari</option>
+          <option>Development Area</option>
+          <option>Lower MG Marg</option>
+          <option>Deorali</option>
+          <option>Tadong</option>
+          <option>Ranipool</option>
+          <option>Syari–Tathangchen</option>
+          <option>Other / roadside</option>
+        </select>
+
+        <label for="repDesc">What did you notice?</label>
+        <textarea id="repDesc" rows="3" placeholder="e.g. fresh crack along the retaining wall, road edge subsiding, water seeping from the slope…"></textarea>
+
+        <label for="repFile">Photo or video (optional)</label>
+        <input type="file" id="repFile" accept="image/*,video/*">
+
+        <label style="display:flex; align-items:center; gap:6px; margin-top:10px;">
+          <input type="checkbox" id="repGeo" style="width:auto;"> Attach my current location
+        </label>
+
+        <div style="margin-top:12px;">
+          <button type="submit" class="btn primary">Submit report</button>
+        </div>
+      </form>
+      <div id="reportList"></div>
+    </div>
+    <div class="panel-foot"><span id="storageNote">Reports are stored for this demonstration and are visible to anyone viewing this page.</span></div>
+  </div>
+
+  <h2 id="about" data-i18n="about_heading">About this platform</h2>
+  <div class="panel">
+    <div class="panel-body">
+      <p>Pahiro (a regional word for landslide) is a concept demonstration of a real-time monitoring and early-warning platform for landslide-prone towns in the North Eastern Region. It combines a GIS view of population and risk, live rainfall and soil-moisture readings, a citizen and field-official reporting channel, and dashboards intended for district administrations and disaster management authorities.</p>
+      <p>Gangtok's hill slopes have a long record of instability, worsened by steep terrain, heavy monsoon rainfall and unplanned hill-cutting. A severe rainfall-triggered event in June 1997 caused widespread damage and loss of life across several wards, and smaller slides recur most monsoons, particularly around Chandmari, Sichey, Burtuk and Syari–Tathangchen.</p>
+      <p><strong>What is real in this demonstration:</strong> the rainfall, forecast and soil-moisture readings are live figures for Gangtok's coordinates, drawn from a public weather data service. <strong>What is illustrative:</strong> ward boundaries, exact marker positions, road status, priority ordering and the risk-score thresholds are simplified for demonstration and are not a substitute for an official hazard assessment.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="disclaimer">
+    This is an independent concept prototype built to illustrate the idea above. It is not an official government service and should not be used to make evacuation or emergency decisions. In an emergency in Sikkim, contact the State/District Disaster Management Authority or dial 112.
+  </div>
+  <p>Data sources: rainfall, forecast and soil moisture from the Open-Meteo public weather API; base map tiles from OpenStreetMap contributors; slope-risk and ward context adapted from published hazard studies of Gangtok. Built as a demonstration for the North Eastern Region landslide early-warning problem statement.</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+
+  /* ---------- location gate ---------- */
+  var gate = document.getElementById('gate');
+  function openGangtok(msg){
+    gate.classList.add('hidden');
+    if(msg){
+      var banner = document.getElementById('bannerText');
+      banner.textContent = msg;
+    }
+    initMap();
+    fetchWeather();
+  }
+  document.getElementById('continueGangtok').addEventListener('click', function(){ openGangtok(); });
+  document.querySelector('#gateList li.enabled').addEventListener('click', function(){ openGangtok(); });
+  document.querySelector('#gateList li.enabled').addEventListener('keypress', function(e){ if(e.key==='Enter') openGangtok(); });
+  document.getElementById('useLocationBtn').addEventListener('click', function(){
+    var fallback = "Your device location is outside the current pilot area. Showing Gangtok, Sikkim — the only location supported in this demonstration.";
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(
+        function(){ openGangtok(fallback); },
+        function(){ openGangtok(fallback); },
+        { timeout: 3000 }
+      );
+    } else {
+      openGangtok(fallback);
+    }
+  });
+  document.getElementById('changeLocationBtn').addEventListener('click', function(){
+    gate.classList.remove('hidden');
+  });
+
+  /* ---------- language toggle ---------- */
+  var dict = {
+    nav_home:{en:"Home", ne:"गृहपृष्ठ", hi:"होम"},
+    nav_map:{en:"Risk dashboard", ne:"जोखिम ड्यासबोर्ड", hi:"जोखिम डैशबोर्ड"},
+    nav_report:{en:"Field reports", ne:"क्षेत्र प्रतिवेदन", hi:"क्षेत्र रिपोर्ट"},
+    nav_alerts:{en:"Alerts", ne:"सूचना", hi:"चेतावनी"},
+    nav_about:{en:"About", ne:"बारेमा", hi:"परिचय"},
+    site_tagline:{en:"Early warning and monitoring for landslide-prone slopes", ne:"पहिरो जोखिमयुक्त भिरालो क्षेत्रको पूर्व सूचना र अनुगमन", hi:"भूस्खलन-प्रवण ढलानों हेतु पूर्व चेतावनी और निगरानी"},
+    alert_heading:{en:"Current status", ne:"हालको अवस्था", hi:"वर्तमान स्थिति"},
+    map_heading:{en:"Gangtok — population and landslide risk zones", ne:"ग्याङटक — जनसंख्या र पहिरो जोखिम क्षेत्र", hi:"गंगटोक — जनसंख्या और भूस्खलन जोखिम क्षेत्र"},
+    conditions_heading:{en:"Present conditions — Gangtok", ne:"हालको अवस्था — ग्याङटक", hi:"वर्तमान स्थिति — गंगटोक"},
+    forecast_heading:{en:"Three-day rainfall outlook", ne:"तीन दिनको वर्षा पूर्वानुमान", hi:"तीन-दिवसीय वर्षा पूर्वानुमान"},
+    roads_heading:{en:"Road connectivity", ne:"सडक जडान स्थिति", hi:"सड़क संपर्क स्थिति"},
+    priority_heading:{en:"Response priority order", ne:"प्राथमिकता क्रम", hi:"प्राथमिकता क्रम"},
+    report_heading:{en:"Report a slope or road hazard", ne:"जोखिम विवरण पेश गर्नुहोस्", hi:"खतरे की रिपोर्ट करें"},
+    about_heading:{en:"About this platform", ne:"यस प्लेटफर्मको बारेमा", hi:"इस मंच के बारे में"}
+  };
+  document.querySelectorAll('.lang-toggle button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.lang-toggle button').forEach(function(b){b.classList.remove('active');});
+      btn.classList.add('active');
+      var lang = btn.getAttribute('data-lang');
+      document.getElementById('htmlRoot').setAttribute('lang', lang);
+      document.querySelectorAll('[data-i18n]').forEach(function(el){
+        var key = el.getAttribute('data-i18n');
+        if(dict[key] && dict[key][lang]) el.textContent = dict[key][lang];
+      });
+    });
+  });
+
+  /* ---------- map ---------- */
+  var mapInitialised = false;
+  function initMap(){
+    if(mapInitialised) return;
+    mapInitialised = true;
+
+    var map = L.map('map').setView([27.3320, 88.6120], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    var populationAreas = [
+      {name:"Lower MG Marg (Ward 8)", lat:27.3299, lng:88.6138, level:"Very high", radius:14, desc:"Main commercial street and civic offices; the busiest part of town through the day."},
+      {name:"Deorali (Ward 11)", lat:27.3193, lng:88.6087, level:"High", radius:11, desc:"Dense residential and market cluster on the southern approach to town."},
+      {name:"Tadong (Ward 13)", lat:27.3040, lng:88.6122, level:"High", radius:11, desc:"Institutional and residential area near the university and NIT campuses."},
+      {name:"Ranipool (Ward 14)", lat:27.2865, lng:88.6198, level:"High", radius:11, desc:"Growing settlement along the Gangtok–Rangpo corridor."},
+      {name:"Chandmari (Ward 4)", lat:27.3396, lng:88.6202, level:"High", radius:11, desc:"Long-settled residential ward on the eastern hillside."},
+      {name:"Development Area (Ward 5)", lat:27.3262, lng:88.6052, level:"Moderate", radius:8, desc:"Planned institutional and residential layout."},
+      {name:"Tibet Road / Arithang", lat:27.3332, lng:88.6165, level:"Moderate", radius:8, desc:"Mixed residential and commercial lanes close to the ridge."}
+    ];
+
+    var riskZones = [
+      {name:"Burtuk", lat:27.3536, lng:88.6041, level:"Very High", reason:"Steep northwestern slope with a long record of shallow slides; ranked among the town's most vulnerable wards in hazard studies."},
+      {name:"Upper Sichey", lat:27.3452, lng:88.5978, level:"Very High", reason:"Fractured hillside above the town with repeated creep and ground subsidence."},
+      {name:"Syari–Tathangchen", lat:27.3572, lng:88.6122, level:"High", reason:"East-facing slope below the old Palace grounds; a slow-moving landslide has been active here for decades."},
+      {name:"Chandmari slide belt", lat:27.3410, lng:88.6215, level:"High", reason:"Slope has failed repeatedly since the 1960s, with cracked buildings and road subsidence recorded nearby."},
+      {name:"Ranipool corridor", lat:27.2865, lng:88.6198, level:"High", reason:"Loose fill slopes along the highway, sensitive to prolonged rainfall."},
+      {name:"Tadong cut slopes", lat:27.3040, lng:88.6122, level:"Moderate", reason:"Shallow slides reported on cut slopes along institutional access roads."}
+    ];
+
+    var roads = [
+      {name:"NH10, Ranipool – Gangtok", color:"#a66a1e", points:[[27.2840,88.6210],[27.3040,88.6122],[27.3193,88.6087],[27.3299,88.6138]], status:"Reduced — single lane near Ranipool"},
+      {name:"Gangtok – Ranka road", color:"#2f4f3e", points:[[27.3299,88.6138],[27.3396,88.6202],[27.3572,88.6122]], status:"Open"}
+    ];
+
+    populationAreas.forEach(function(a){
+      var m = L.circleMarker([a.lat,a.lng], {
+        radius:a.radius, color:"#1b2a4a", weight:1.5, fillColor:"#1b2a4a", fillOpacity:0.28
+      }).addTo(map);
+      m.bindPopup("<strong>"+a.name+"</strong><br>Population density: "+a.level+"<br>"+a.desc);
+    });
+
+    var riskColor = {"Very High":"#7a1f1f", "High":"#b23a22", "Moderate":"#a66a1e"};
+    riskZones.forEach(function(z){
+      var m = L.circleMarker([z.lat,z.lng], {
+        radius: z.level==="Very High" ? 13 : (z.level==="High" ? 10 : 8),
+        color:"#3a2c1c", weight:1, fillColor:riskColor[z.level], fillOpacity:0.75
+      }).addTo(map);
+      m.bindPopup("<strong>"+z.name+"</strong><br>Risk level: "+z.level+"<br>"+z.reason);
+      m.bindTooltip(z.name+" — "+z.level, {permanent:true, direction:"right", offset:[8,0], className:"risk-tooltip"});
+    });
+
+    roads.forEach(function(r){
+      var line = L.polyline(r.points, {color:r.color, weight:4, opacity:0.8, dashArray: r.status.indexOf("Open")===0 ? null : "6,4"}).addTo(map);
+      line.bindPopup("<strong>"+r.name+"</strong><br>Status: "+r.status);
+    });
+  }
+
+  /* ---------- weather / soil moisture ---------- */
+  var GANGTOK_LAT = 27.3389, GANGTOK_LNG = 88.6065;
+  var WX_URL = "https://api.open-meteo.com/v1/forecast?latitude="+GANGTOK_LAT+"&longitude="+GANGTOK_LNG+
+    "&current=precipitation,rain,temperature_2m,relative_humidity_2m&hourly=precipitation,precipitation_probability,soil_moisture_0_to_1cm,soil_moisture_1_to_3cm,soil_moisture_3_to_9cm&daily=precipitation_sum,precipitation_probability_max&timezone=Asia%2FKolkata&forecast_days=3";
+
+  function classify(rain24, soil13){
+    if(rain24 >= 40 || soil13 >= 0.38) return "Very High";
+    if(rain24 >= 20 || soil13 >= 0.30) return "High";
+    if(rain24 >= 8  || soil13 >= 0.22) return "Moderate";
+    return "Low";
+  }
+
+  function bannerCopy(level, rain24){
+    if(level === "Very High") return "Heavy rainfall and saturated soil around Gangtok. Field teams should treat Burtuk, Upper Sichey and Syari–Tathangchen as priority checks.";
+    if(level === "High") return "Rainfall and soil moisture are elevated. Increased vigilance advised in the marked high-risk wards.";
+    if(level === "Moderate") return "Conditions are within a normal monsoon range, with some rain expected over the next day.";
+    return "No significant rainfall or soil-moisture trigger detected for Gangtok at present.";
+  }
+
+  function fetchWeather(){
+    var lastUpdatedEl = document.getElementById('lastUpdated');
+    lastUpdatedEl.textContent = "Last updated: refreshing…";
+    fetch(WX_URL).then(function(res){
+      if(!res.ok) throw new Error("weather service unavailable");
+      return res.json();
+    }).then(function(data){
+      var hourlyTimes = data.hourly.time;
+      var idx = hourlyTimes.indexOf(data.current.time);
+      if(idx < 0) idx = 0;
+
+      var rainNow = data.current.precipitation;
+      var soil01 = data.hourly.soil_moisture_0_to_1cm[idx];
+      var soil13 = data.hourly.soil_moisture_1_to_3cm[idx];
+      var temp = data.current.temperature_2m;
+
+      var rain24 = 0;
+      var end = Math.min(idx+24, data.hourly.precipitation.length);
+      for(var i=idx; i<end; i++){ rain24 += (data.hourly.precipitation[i]||0); }
+
+      document.getElementById('statRainNow').textContent = rainNow.toFixed(1)+" mm";
+      document.getElementById('statRain24').textContent = rain24.toFixed(1)+" mm";
+      document.getElementById('statSoil01').textContent = (soil01*100).toFixed(1)+"% by volume";
+      document.getElementById('statSoil13').textContent = (soil13*100).toFixed(1)+"% by volume";
+      document.getElementById('statTemp').textContent = temp.toFixed(1)+" °C";
+
+      var level = classify(rain24, soil13);
+      var badgeClass = level.replace(" ", "-");
+      document.getElementById('statRiskBadge').innerHTML = '<span class="badge '+badgeClass+'">'+level+'</span>';
+
+      var banner = document.getElementById('statusBanner');
+      banner.className = "banner risk-"+badgeClass;
+      document.getElementById('bannerText').textContent = bannerCopy(level, rain24);
+
+      var alertsBody = document.getElementById('alertsBody');
+      if(level === "Low"){
+        alertsBody.innerHTML = "<p>No active alerts issued for Gangtok at this time.</p>";
+      } else {
+        alertsBody.innerHTML = "<p><span class='badge "+badgeClass+"'>"+level+"</span> — indicative alert based on current rainfall and soil-moisture readings. This would trigger SMS and app notifications to district authorities and residents of the marked wards in a full deployment.</p>";
+      }
+
+      var now = new Date();
+      lastUpdatedEl.textContent = "Last updated: "+now.toLocaleTimeString();
+
+      var body = document.getElementById('forecastBody');
+      body.innerHTML = "";
+      data.daily.time.forEach(function(d, i){
+        var sum = data.daily.precipitation_sum[i];
+        var prob = data.daily.precipitation_probability_max[i];
+        var lvl = classify(sum, soil13);
+        var row = document.createElement('tr');
+        row.innerHTML = "<td>"+d+"</td><td>"+sum.toFixed(1)+" mm</td><td>"+prob+"%</td><td><span class='badge "+lvl.replace(' ','-')+"'>"+lvl+"</span></td>";
+        body.appendChild(row);
+      });
+
+    }).catch(function(err){
+      document.getElementById('bannerText').textContent = "Live weather data is temporarily unavailable. Showing last known layout only.";
+      lastUpdatedEl.textContent = "Last updated: unavailable";
+    });
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', fetchWeather);
+  setInterval(fetchWeather, 10 * 60 * 1000);
+
+  /* ---------- network status ---------- */
+  function updateNet(){
+    var el = document.getElementById('netStatus');
+    el.textContent = navigator.onLine ? "Online" : "Offline — queuing locally";
+  }
+  window.addEventListener('online', updateNet);
+  window.addEventListener('offline', updateNet);
+  updateNet();
+
+  /* ---------- field reports ---------- */
+  var hasStorage = (typeof window.storage !== 'undefined');
+  document.getElementById('storageNote').textContent = hasStorage ?
+    "Reports are saved for this demonstration and are visible to anyone viewing this page." :
+    "Reports are held in memory for this session only (persistent storage is not available in this view).";
+
+  var memoryReports = [];
+
+  function renderReport(container, r){
+    var div = document.createElement('div');
+    div.className = 'rep';
+    div.innerHTML = "<strong>"+r.locality+"</strong> — "+r.desc+
+      (r.file ? " <em>("+r.file+")</em>" : "") +
+      "<div class='meta'>"+r.time+(r.geo ? " · location attached" : "")+"</div>";
+    container.prepend(div);
+  }
+
+  function loadReports(){
+    var list = document.getElementById('reportList');
+    list.innerHTML = "";
+    if(hasStorage){
+      window.storage.list('report:', true).then(function(res){
+        if(!res || !res.keys || res.keys.length===0) return;
+        var keys = res.keys.slice(-10).reverse();
+        keys.forEach(function(k){
+          window.storage.get(k, true).then(function(entry){
+            if(entry) renderReport(list, JSON.parse(entry.value));
+          }).catch(function(){});
+        });
+      }).catch(function(){ /* no reports yet */ });
+    } else {
+      memoryReports.slice().reverse().forEach(function(r){ renderReport(list, r); });
+    }
+  }
+
+  document.getElementById('reportForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var locality = document.getElementById('repLocality').value;
+    var desc = document.getElementById('repDesc').value.trim() || "No description provided.";
+    var fileInput = document.getElementById('repFile');
+    var fileName = fileInput.files && fileInput.files[0] ? fileInput.files[0].name : null;
+    var geo = document.getElementById('repGeo').checked;
+    var record = { locality:locality, desc:desc, file:fileName, geo:geo, time:new Date().toLocaleString() };
+
+    function finish(){
+      document.getElementById('reportForm').reset();
+      loadReports();
+    }
+
+    if(hasStorage){
+      var key = 'report:'+Date.now();
+      window.storage.set(key, JSON.stringify(record), true).then(finish).catch(function(){
+        memoryReports.push(record); finish();
+      });
+    } else {
+      memoryReports.push(record);
+      finish();
+    }
+  });
+
+  loadReports();
+
+})();
+</script>
+</body>
+</html>
